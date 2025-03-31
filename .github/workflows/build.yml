@@ -28,7 +28,6 @@ jobs:
         run: |
           make distclean || true
           make defconfig
-          # Compile using musl-gcc with size optimizations
           CC=musl-gcc CFLAGS="-Os" make -j$(nproc)
           strip busybox
 
@@ -66,12 +65,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mingw-w64
 
+      - name: Copy patched byteswap.h for Windows
+        if: matrix.target == 'windows_static'
+        run: |
+          cp patches/byteswap.h include/byteswap.h
+
       - name: Build BusyBox for windows_static (MinGW)
         if: matrix.target == 'windows_static'
         run: |
           make distclean || true
           make defconfig
-          # Use the MinGW cross-compiler; optimize for size and enforce static linking
           make CROSS_COMPILE=x86_64-w64-mingw32- HOSTCC=gcc CFLAGS="-Os -static" LDFLAGS="-static" -j$(nproc)
           strip busybox.exe
 
