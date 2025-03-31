@@ -28,7 +28,16 @@ jobs:
         run: |
           make distclean || true
           make defconfig
-          CC=musl-gcc CFLAGS="-Os" make -j$(nproc)
+          CC=musl-gcc CFLAGS="-Os \
+            -DTCA_CBQ_MAX=7 \
+            -DTCA_CBQ_RATE=2 \
+            -DTCA_CBQ_LSSOPT=3 \
+            -DTCA_CBQ_WRROPT=4 \
+            -DTCA_CBQ_FOPT=5 \
+            -DTCA_CBQ_OVL_STRATEGY=6 \
+            -DTCF_CBQ_LSS_BOUNDED=1 \
+            -DTCF_CBQ_LSS_ISOLATED=2 \
+            -DTC_CBQ_MAXPRIO=16" make -j$(nproc)
           strip busybox
 
       - name: Upload linux_x64 artifact
