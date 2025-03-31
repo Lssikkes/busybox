@@ -1,0 +1,88 @@
+name: Build BusyBox (musl & static Windows)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ linux_x64, linux_arm64, windows_static ]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # --- Linux x64 Build (musl) ---
+      - name: Setup musl for linux_x64
+        if: matrix.target == 'linux_x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build BusyBox for linux_x64 (musl)
+        if: matrix.target == 'linux_x64'
+        run: |
+          # Clean any previous build state
+          make distclean || true
+          # Create a default configuration
+          make defconfig
+          # Build with musl-gcc and optimize for size
+          CC=musl-gcc CFLAGS="-Os" make -j$(nproc)
+          # Strip symbols to minimize binary size
+          strip busybox
+
+      - name: Upload linux_x64 artifact
+        if: matrix.target == 'linux_x64'
+        uses: actions/upload-artifact@v3
+        with:
+          name: busybox-linux-x64
+          path: busybox
+
+      # --- Linux arm64 Build (musl via Docker) ---
+      - name: Build BusyBox for linux_arm64 (musl)
+        if: matrix.target == 'linux_arm64'
+        run: |
+          # Run the build inside a Docker container that provides an aarch64-musl cross-compiler.
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            tonistiigi/musl-cross:aarch64-musl \
+            /bin/sh -c "make distclean || true && \
+                        make defconfig && \
+                        make CROSS_COMPILE=aarch64-linux-musl- CFLAGS='-Os' -j\$(nproc) && \
+                        strip busybox"
+      
+      - name: Upload linux_arm64 artifact
+        if: matrix.target == 'linux_arm64'
+        uses: actions/upload-artifact@v3
+        with:
+          name: busybox-linux-arm64
+          path: busybox
+
+      # --- Windows Static Build ---
+      - name: Setup mingw for windows_static
+        if: matrix.target == 'windows_static'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: Build BusyBox for windows_static (MinGW)
+        if: matrix.target == 'windows_static'
+        run: |
+          make distclean || true
+          make defconfig
+          # CROSS_COMPILE to use the mingw cross-compiler; HOSTCC is set to gcc.
+          # "-Os" optimizes for size; "-static" forces static linking.
+          make CROSS_COMPILE=x86_64-w64-mingw32- HOSTCC=gcc CFLAGS="-Os -static" LDFLAGS="-static" -j$(nproc)
+          strip busybox.exe
+
+      - name: Upload windows_static artifact
+        if: matrix.target == 'windows_static'
+        uses: actions/upload-artifact@v3
+        with:
+          name: busybox-windows-static
+          path: busybox.exe
