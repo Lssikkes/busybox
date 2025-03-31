@@ -28,7 +28,7 @@ jobs:
         run: |
           make distclean || true
           make defconfig
-          # Use musl-gcc and optimize for size with -Os
+          # Compile using musl-gcc with size optimizations
           CC=musl-gcc CFLAGS="-Os" make -j$(nproc)
           strip busybox
 
@@ -39,14 +39,14 @@ jobs:
           name: busybox-linux-x64
           path: busybox
 
-      # --- Linux arm64 Build (musl via Docker) ---
+      # --- Linux arm64 Build (musl via dockcross) ---
       - name: Build BusyBox for linux_arm64 (musl)
         if: matrix.target == 'linux_arm64'
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
-            tonistiigi/musl-cross:aarch64-musl \
+            dockcross/linux-arm64-musl \
             /bin/sh -c "make distclean || true && \
                         make defconfig && \
                         make CROSS_COMPILE=aarch64-linux-musl- CFLAGS='-Os' -j\$(nproc) && \
@@ -71,7 +71,7 @@ jobs:
         run: |
           make distclean || true
           make defconfig
-          # CROSS_COMPILE for MinGW; optimize size and force static linking
+          # Use the MinGW cross-compiler; optimize for size and enforce static linking
           make CROSS_COMPILE=x86_64-w64-mingw32- HOSTCC=gcc CFLAGS="-Os -static" LDFLAGS="-static" -j$(nproc)
           strip busybox.exe
 
