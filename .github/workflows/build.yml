@@ -68,7 +68,7 @@ jobs:
       - name: Copy patched byteswap.h for Windows
         if: matrix.target == 'windows_static'
         run: |
-          cp patches/byteswap.h include/byteswap.h
+          cp patches/windows_static/byteswap.h include/byteswap.h
 
       - name: Build BusyBox for windows_static (MinGW)
         if: matrix.target == 'windows_static'
